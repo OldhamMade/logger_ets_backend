@@ -4,9 +4,9 @@ defmodule LoggerEtsBackend.MixProject do
   def project do
     [
       app: :logger_ets_backend,
-      version: "0.1.0",
+      version: "0.0.1",
       elixir: "~> 1.8",
-      start_permanent: Mix.env() == :prod,
+      # start_permanent: Mix.env() == :prod,
       deps: deps()
     ]
   end
