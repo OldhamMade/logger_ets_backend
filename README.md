@@ -1,10 +1,12 @@
 # LoggerEtsBackend
 
+[![current build status on Travis-CI.org][build_status]][1]
+
 A simple `Logger` backend which writes logs to an ETS table.
 It does not create or manage the table for you; you must do
 this external to the logging app.
 
-`LoggerEtsBackend` borrows heavily from [`LoggerFileBackend`][1], and
+`LoggerEtsBackend` borrows heavily from [`LoggerFileBackend`][2], and
 therefore acts much the same way.
 
 ## Rationale
@@ -47,8 +49,8 @@ config :logger, :critical_log,
 * `metadata` - the metadata to include
 * `metadata_filter` - metadata terms which must be present in order to log
 
-**Note:** It is recommended that `metadata_filter` is set for this backend, to ensure
-only a small subset of log entries are captured.
+**Note:** It is recommended that `metadata_filter` is set for this
+backend, to ensure only a small subset of log entries are captured.
 
 ### Examples
 
@@ -112,4 +114,6 @@ config :logger, :ui,
 ```
 
 
-[1]: https://github.com/onkel-dirtus/logger_file_backend
+[1]: https://travis-ci.org/OldhamMade/logger_ets_backend
+[2]: https://github.com/onkel-dirtus/logger_file_backend
+[build_status]: https://travis-ci.org/OldhamMade/logger_ets_backend.svg?branch=master
