@@ -1,6 +1,5 @@
 defmodule LoggerEtsBackend do
-  @moduledoc """
-  """
+  @moduledoc false
 
   @behaviour :gen_event
 
