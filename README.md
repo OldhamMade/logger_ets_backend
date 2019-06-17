@@ -1,10 +1,10 @@
 # LoggerEtsBackend
 
-[![current build status on Travis-CI.org][build_status]][1]
+[![current build status on Travis-CI.org](https://travis-ci.org/OldhamMade/logger_ets_backend.svg?branch=master)][1]
 
-A simple `Logger` backend which writes logs to an ETS table.
-It does not create or manage the table for you; you must do
-this external to the logging app.
+A simple `Logger` backend which writes log entries to an ETS table.
+It does not create or manage the table for you; you must do this
+external to the logging app.
 
 `LoggerEtsBackend` borrows heavily from [`LoggerFileBackend`][2], and
 therefore acts much the same way.
@@ -13,20 +13,20 @@ therefore acts much the same way.
 
 The primary use-case for this backend is _not_ for persistent logs,
 but for temporary logs that may need to be inspected at run-time by
-the system itself. By pushing log messages to an ETS table, data
-can be quickly searched using `match_spec`s based on message contents
-or the metadata stored along with the entry.
+the system itself. By pushing log messages to an ETS table, data can
+be quickly searched using `match_spec`s based on message contents or
+the metadata stored along with the entry.
 
 ## Configuration
 
 `LoggerEtsBackend` is a custom backend for the elixir `:logger`
 application. This backend can only log to a single ETS table, so there
-must be one `:logger` backend configured for each log file we need. Each
-backend has a name like `{LoggerEtsBackend, id}`, where `id` is any
-elixir term (usually an atom).
+must be one `:logger` backend configured for each log file we
+need. Each backend has a name like `{LoggerEtsBackend, id}`, where
+`id` is any elixir term (usually an atom).
 
-**Note:** tables use for logging are recommented to be configured with the
-`:ordered_set` and `:public` options.
+**Note:** tables use for logging are recommented to be configured with
+the `:ordered_set` and `:public` options.
 
 ### Configuration Example
 
@@ -47,7 +47,8 @@ config :logger, :critical_log,
 * `table` - the table name to push log tuples to
 * `level` - the logging level for the backend
 * `metadata` - the metadata to include
-* `metadata_filter` - metadata terms which must be present in order to log
+* `metadata_filter` - metadata terms which must be present in order to
+  log
 
 **Note:** It is recommended that `metadata_filter` is set for this
 backend, to ensure only a small subset of log entries are captured.
@@ -101,7 +102,8 @@ config :logger, :info,
 #### Filtering logging by specifying metadata terms
 
 This example only logs `:info` statements originating from the `:ui`
-OTP app. The `:application` metadata key is auto-populated by `Logger`.
+OTP app. The `:application` metadata key is auto-populated by
+`Logger`.
 
 ```elixir
 config :logger,
@@ -116,4 +118,3 @@ config :logger, :ui,
 
 [1]: https://travis-ci.org/OldhamMade/logger_ets_backend
 [2]: https://github.com/onkel-dirtus/logger_file_backend
-[build_status]: https://travis-ci.org/OldhamMade/logger_ets_backend.svg?branch=master
