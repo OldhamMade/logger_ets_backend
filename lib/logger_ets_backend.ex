@@ -1,5 +1,8 @@
 defmodule LoggerEtsBackend do
-  @moduledoc false
+  @moduledoc "README.md"
+             |> File.read!()
+             |> String.split("<!-- MDOC !-->")
+             |> Enum.fetch!(1)
 
   @behaviour :gen_event
 
@@ -12,13 +15,14 @@ defmodule LoggerEtsBackend do
   end
 
   def handle_event(
-    {level, _gl, {Logger, msg, ts, md}},
-    %{level: min_level, metadata_filter: metadata_filter} = state
-  ) do
-    if (is_nil(min_level) or Logger.compare_levels(level, min_level) != :lt)
-    and metadata_matches?(md, metadata_filter) do
+        {level, _gl, {Logger, msg, ts, md}},
+        %{level: min_level, metadata_filter: metadata_filter} = state
+      ) do
+    if (is_nil(min_level) or Logger.compare_levels(level, min_level) != :lt) and
+         metadata_matches?(md, metadata_filter) do
       log_event(level, msg, ts, md, state)
     end
+
     {:ok, state}
   end
 
@@ -44,25 +48,33 @@ defmodule LoggerEtsBackend do
   end
 
   def metadata_matches?(_md, nil), do: true
-  def metadata_matches?(_md, []), do: true # all of the filter keys are present
+  # all of the filter keys are present
+  def metadata_matches?(_md, []), do: true
+
   def metadata_matches?(md, [{key, val} | rest]) do
     case Keyword.fetch(md, key) do
       {:ok, ^val} ->
         metadata_matches?(md, rest)
-      _ -> false #fail on first mismatch
+
+      # fail on first mismatch
+      _ ->
+        false
     end
   end
 
   defp take_metadata(metadata, :all), do: metadata
+
   defp take_metadata(metadata, keys) do
-    metadatas = Enum.reduce(keys, [], fn key, acc ->
-      case Keyword.fetch(metadata, key) do
-        {:ok, val} ->
-          [{key, val} | acc]
-        :error ->
-          acc
-      end
-    end)
+    metadatas =
+      Enum.reduce(keys, [], fn key, acc ->
+        case Keyword.fetch(metadata, key) do
+          {:ok, val} ->
+            [{key, val} | acc]
+
+          :error ->
+            acc
+        end
+      end)
 
     Enum.reverse(metadatas)
   end
@@ -77,6 +89,7 @@ defmodule LoggerEtsBackend do
       metadata: nil,
       metadata_filter: nil
     }
+
     configure(name, opts, state)
   end
 
@@ -87,15 +100,17 @@ defmodule LoggerEtsBackend do
 
     table = Keyword.get(opts, :table)
     level = Keyword.get(opts, :level)
-    metadata = Keyword.get(opts, :metadata, []) #
+    #
+    metadata = Keyword.get(opts, :metadata, [])
     metadata_filter = Keyword.get(opts, :metadata_filter)
 
-    %{ state |
-       name: name,
-       table: table,
-       level: level,
-       metadata: metadata,
-       metadata_filter: metadata_filter
+    %{
+      state
+      | name: name,
+        table: table,
+        level: level,
+        metadata: metadata,
+        metadata_filter: metadata_filter
     }
   end
 end
