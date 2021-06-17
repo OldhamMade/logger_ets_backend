@@ -1,13 +1,16 @@
 # LoggerEtsBackend
 
-[![current build status on Travis-CI.org](https://travis-ci.org/OldhamMade/logger_ets_backend.svg?branch=master)][1]
+![CI][ci-badge] [![Coverage Status][coverage-badge]][coverage-link]
+
+<!-- MDOC !-->
 
 A simple `Logger` backend which writes log entries to an ETS table.
 It does not create or manage the table for you; you must do this
 external to the logging app.
 
-`LoggerEtsBackend` borrows heavily from [`LoggerFileBackend`][2], and
-therefore acts much the same way.
+`LoggerEtsBackend` borrows heavily from
+[`LoggerFileBackend`][logger_file_backend], and therefore acts much
+the same way.
 
 ## Rationale
 
@@ -52,6 +55,8 @@ config :logger, :critical_log,
 
 **Note:** It is recommended that `metadata_filter` is set for this
 backend, to ensure only a small subset of log entries are captured.
+
+<!-- MDOC !-->
 
 ### Examples
 
@@ -115,6 +120,50 @@ config :logger, :ui,
   metadata_filter: [application: :ui]
 ```
 
+## Contributing
 
-[1]: https://travis-ci.org/OldhamMade/logger_ets_backend
-[2]: https://github.com/onkel-dirtus/logger_file_backend
+**Note: the project is made & maintained by a small team of humans,
+who on occasion may make mistakes and omissions. Please do not
+hesitate to point out if you notice a bug or something missing, and
+consider contributing if you can.**
+
+The project is managed on a best-effort basis, and aims to be "good
+enough". If there are features missing please raise a ticket or create
+a Pull Request by following these steps:
+
+1.  [Fork it][fork]
+2.  Create your feature branch (`git checkout -b my-new-feature`)
+3.  Commit your changes (`git commit -am 'Add some feature'`)
+4.  Push to the branch (`git push origin my-new-feature`)
+5.  Raise a new pull request via GitHub
+
+## Liability
+
+We take no responsibility for the use of our tool, or external
+instances provided by third parties. We strongly recommend you abide
+by the valid official regulations in your country. Furthermore, we
+refuse liability for any inappropriate or malicious use of this
+tool. This tool is provided to you in the spirit of free, open
+software.
+
+You may view the LICENSE in which this software is provided to you
+[here](./LICENSE).
+
+> 8. Limitation of Liability. In no event and under no legal theory,
+>    whether in tort (including negligence), contract, or otherwise,
+>    unless required by applicable law (such as deliberate and grossly
+>    negligent acts) or agreed to in writing, shall any Contributor be
+>    liable to You for damages, including any direct, indirect, special,
+>    incidental, or consequential damages of any character arising as a
+>    result of this License or out of the use or inability to use the
+>    Work (including but not limited to damages for loss of goodwill,
+>    work stoppage, computer failure or malfunction, or any and all
+>    other commercial damages or losses), even if such Contributor
+>    has been advised of the possibility of such damages.
+
+
+[logger_file_backend]: https://github.com/onkel-dirtus/logger_file_backend
+[ci-badge]: https://github.com/OldhamMade/logger_ets_backend/workflows/CI/badge.svg
+[coverage-badge]: https://coveralls.io/repos/github/OldhamMade/logger_ets_backend/badge.svg?branch=main
+[coverage-link]: https://coveralls.io/github/OldhamMade/logger_ets_backend?branch=main
+[fork]: https://github.com/OldhamMade/logger_ets_backend/fork

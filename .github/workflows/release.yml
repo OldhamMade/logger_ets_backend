@@ -1,0 +1,138 @@
+name: Release
+
+on:
+  # Trigger this workflow on push (merge) events,
+  # but only for the main branch
+  push:
+    branches:
+      - main
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  VERSIONS_OTP: '24.0.1'
+  VERSIONS_ELIXIR: '1.12.x'
+  HEX_API_KEY: ${{ secrets.HEX_API_KEY }}
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: "[Git] Checkout code"
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: "[Git] Capture message"
+        run: |
+          # Actions do not support multiline `::set-output`s
+          echo 'COMMIT_MSG<<EOM' >> "$GITHUB_ENV"
+          git log -n1 --pretty='%B' >> "$GITHUB_ENV"
+          echo 'EOM' >> "$GITHUB_ENV"
+
+      - name: "[Setup] Open /usr/local/bin Permissions"
+        run: sudo chmod -R a+rwx /usr/local/bin
+
+      - name: "[Setup] Cache Dependencies"
+        id: cache
+        uses: actions/cache@v2
+        with:
+          path: |
+            deps
+            _build/test/lib
+            /usr/local/bin/git-cl
+          key: ${{ runner.os }}-release
+          restore-keys: |
+            ${{ runner.os }}-release
+
+      - name: "[Setup] Setup Elixir"
+        uses: erlef/setup-beam@v1
+        with:
+          elixir-version: ${{ env.VERSIONS_ELIXIR }}
+          otp-version: ${{ env.VERSIONS_OTP }}
+
+      - name: "[Version] Install"
+        uses: gittools/actions/gitversion/setup@v0.9.6
+        with:
+          versionSpec: '5.x'
+
+      - name: "[Version] Calculate"
+        id: gitversion # step id used as reference for output values
+        uses: gittools/actions/gitversion/execute@v0.9.6
+
+      - name: "[Version] Capture"
+        run: echo "RELEASE_VERSION=${{ steps.gitversion.outputs.semVer }}" >> $GITHUB_ENV
+
+      - name: "[Version] Update"
+        run: |
+          sed -i 's/@version ".*"/@version "${{env.RELEASE_VERSION}}"/gi' mix.exs
+
+      - name: "[Changelog] Install build tools"
+        uses: fwal/setup-swift@v1
+        if: steps.cache.outputs.cache-hit != 'true'
+        with:
+          swift-version: "5.2"
+
+      - name: "[Changelog] Install git-ci"
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          cd /tmp/
+          git clone https://github.com/uptech/git-cl.git git-cl
+          cd ./git-cl
+          make -j$(nproc)
+          sudo make install
+          sudo chmod a+rwx /usr/local/bin/git-cl
+          cd ${GITHUB_WORKSPACE}
+
+      - name: "[Changelog] Fail if no changelog entries"
+        run: |
+          # echo output for debugging
+          git cl unreleased | tail -n +4 | xargs
+          # test output and fail step if empty
+          [ "$(git cl unreleased | tail -n +4 | xargs)" ] || exit 1
+
+      - name: "[Changelog] Generate"
+        run: |
+          git cl full > CHANGELOG.md
+          TODAY=$(date '+%Y-%m-%d')
+          sed -i "s/^## \[Unreleased\] - now/## [${{env.RELEASE_VERSION}}] - ${TODAY}/" CHANGELOG.md
+          sed -i "7,8d" CHANGELOG.md
+
+      - name: "[Release] Commit release updates"
+        uses: stefanzweifel/git-auto-commit-action@v4
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # --amend --no-edit doesn't work because of default --message
+          # (effectively --no-edit is ignored)
+          commit_message: ${{ env.COMMIT_MSG }}
+          commit_options: --amend --no-edit
+          push_options: --force
+          # so as not to make too shallow for commit --amend and push -f
+          skip_fetch: true
+
+      - name: "[Release] Create new release"
+        id: create_release
+        uses: actions/create-release@v1
+        with:
+          tag_name: ${{env.RELEASE_VERSION}}
+          release_name: ${{env.RELEASE_VERSION}}
+          body: |
+            Please see the CHANGELOG for further details
+          draft: false
+          prerelease: false
+
+      - name: "[Release] Setup Elixir for Publishing to Hex.pm"
+        uses: erlef/setup-elixir@v1
+        with:
+          elixir-version: 1.11.x
+          otp-version: 23.x
+
+      - name: "[Release] Publish to Hex.pm"
+        run: |
+          mix local.hex --force
+          mix local.rebar --force
+          mix do deps.get, deps.compile
+          mix hex.build
+          mix hex.publish --yes
