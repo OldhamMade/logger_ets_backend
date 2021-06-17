@@ -8,11 +8,24 @@ defmodule LoggerEtsBackend.MixProject do
     [
       app: :logger_ets_backend,
       version: @version,
-      elixir: "~> 1.3",
+      elixir: "~> 1.6",
+      build_embedded: Mix.env() == :prod,
       description: description(),
       package: package(),
       deps: deps(),
-      docs: docs()
+
+      # Docs
+      name: "logger_ets_backend",
+      docs: docs(),
+
+      # Coverage
+      test_coverage: [tool: ExCoveralls],
+      preferred_cli_env: [
+        coveralls: :test,
+        "coveralls.detail": :test,
+        "coveralls.post": :test,
+        "coveralls.html": :test
+      ]
     ]
   end
 
@@ -24,6 +37,7 @@ defmodule LoggerEtsBackend.MixProject do
 
   defp deps do
     [
+      {:excoveralls, ">= 0.0.0", only: [:dev, :test]},
       {:ex_doc, ">= 0.0.0", only: :dev}
     ]
   end
@@ -34,17 +48,14 @@ defmodule LoggerEtsBackend.MixProject do
 
   defp package() do
     [
-      name: "logger_ets_backend",
-      files: ~w(lib .formatter.exs mix.exs README.md LICENSE CHANGELOG.md),
+      maintainers: ["Phillip Oldham"],
       licenses: ["MIT"],
-      links: %{"GitHub" => @github}
+      links: %{"GitHub" => @github},
+      files: ~w(lib .formatter.exs mix.exs README.md LICENSE CHANGELOG.md)
     ]
   end
 
   defp docs do
-    [extras: ["README.md"],
-     main: "readme",
-     source_ref: "v#{@version}",
-     source_url: @github]
+    [extras: ["README.md"], main: "readme", source_ref: "v#{@version}", source_url: @github]
   end
 end
