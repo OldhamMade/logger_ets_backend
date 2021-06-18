@@ -4,21 +4,23 @@
 
 <!-- MDOC !-->
 
-A simple `Logger` backend which writes log entries to an ETS table.
-It does not create or manage the table for you; you must do this
-external to the logging app.
+A simple `Logger` backend which writes log entries to ETS, primarily
+for runtime inspection.
+
+Note: It does not create or manage the target log table(s) for you; you
+must do this as part of your own application.
 
 `LoggerEtsBackend` borrows heavily from
-[`LoggerFileBackend`][logger_file_backend], and therefore acts much
+[`LoggerFileBackend`][logger_file_backend], and therefore acts in much
 the same way.
 
 ## Rationale
 
 The primary use-case for this backend is _not_ for persistent logs,
-but for temporary logs that may need to be inspected at run-time by
-the system itself. By pushing log messages to an ETS table, data can
-be quickly searched using `match_spec`s based on message contents or
-the metadata stored along with the entry.
+but for temporary logs that need to be inspected at run-time by the
+system itself. By pushing log messages to an ETS table, data can be
+quickly searched using `match_spec`s based on message contents or the
+metadata stored along with the entry.
 
 ## Configuration
 
@@ -35,11 +37,11 @@ the `:ordered_set` and `:public` options.
 
 ```elixir
 config :logger,
-  backends: [{LoggerEtsBackend, :inspection_log}]
+  backends: [{LoggerEtsBackend, :events_log}]
 
-# configuration for the {LoggerEtsBackend, :critical_log} backend
-config :logger, :critical_log,
-  table: :critical_table,
+# configuration for the {LoggerEtsBackend, :events_log} backend
+config :logger, :events_log,
+  table: :events_log_table,
   level: :error
 ```
 
@@ -65,7 +67,8 @@ backend, to ensure only a small subset of log entries are captured.
 ```elixir
 # some process starts an ets table
 :ets.new(:debug_messages, [:ordered_set, :public, :named_table])
-...
+
+# then we configure the backend
 Logger.add_backend {LoggerFileBackend, :debug}
 Logger.configure_backend {LoggerFileBackend, :debug},
   table: :debug_messages,
@@ -118,6 +121,41 @@ config :logger, :ui,
   table: :ui_messages,
   level: :info,
   metadata_filter: [application: :ui]
+```
+
+#### Storing keyword data (Elixir ~> 1.11)
+
+Configuration:
+
+```elixir
+config :logger,
+  backends: [{LoggerEtsBackend, :ui}]
+
+config :logger, :ui,
+  table: :ui_messages,
+  level: :info,
+  metadata_filter: [application: :ui]
+```
+
+Usage (example from an `iex -S mix phx.server` instance):
+
+```elixir
+iex(1)> require Logger
+Logger
+iex(2)> Logger.info([screen: :dashboard, scope: :global], application: :ui)
+:ok
+iex(3)> :ets.lookup(:ui_log, :ets.last(:ui_log))
+[
+  {{{2021, 6, 18}, {6, 59, 18, 173}}, :info, [screen: :dashboard, scope: :global],
+   [
+     erl_level: :info,
+     application: :ui,
+     domain: [:elixir],
+     gl: #PID<0.66.0>,
+     pid: #PID<0.1138.0>,
+     time: 1623992358173152
+   ]}
+]
 ```
 
 ## Contributing

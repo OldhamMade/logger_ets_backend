@@ -11,6 +11,7 @@ defmodule LoggerEtsBackend.MixProject do
       elixir: "~> 1.6",
       build_embedded: Mix.env() == :prod,
       description: description(),
+      aliases: aliases(),
       package: package(),
       deps: deps(),
 
@@ -43,7 +44,7 @@ defmodule LoggerEtsBackend.MixProject do
   end
 
   defp description() do
-    "A simple `Logger` backend which writes log entries to an ETS table."
+    "Logger backend that writes entries to ETS for runtime inspection."
   end
 
   defp package() do
@@ -57,5 +58,11 @@ defmodule LoggerEtsBackend.MixProject do
 
   defp docs do
     [extras: ["README.md"], main: "readme", source_ref: "v#{@version}", source_url: @github]
+  end
+
+  defp aliases do
+    [
+      test: ["test --trace --cover"]
+    ]
   end
 end
