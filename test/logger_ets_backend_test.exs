@@ -23,7 +23,7 @@ defmodule LoggerEtsBackendTest do
     end
   end
 
-  describe "basic " do
+  describe "basic setup" do
     setup do
       config(
         table: @name,
@@ -37,7 +37,7 @@ defmodule LoggerEtsBackendTest do
       end)
     end
 
-    test "add log entry" do
+    test "can add log entry" do
       Logger.info("simple message")
       # to ensure messages are written to ets
       Logger.flush()
@@ -76,21 +76,6 @@ defmodule LoggerEtsBackendTest do
       assert ets_size() == 1
     end
 
-    test "metadata_matches?" do
-      # exact match
-      assert metadata_matches?([a: 1], a: 1) == true
-      # total mismatch
-      assert metadata_matches?([b: 1], a: 1) == false
-      # default to allow
-      assert metadata_matches?([b: 1], nil) == true
-      # metadata is superset of filter
-      assert metadata_matches?([b: 1, a: 1], a: 1) == true
-      # multiple filter keys subset of metadata
-      assert metadata_matches?([c: 1, b: 1, a: 1], b: 1, a: 1) == true
-      # multiple filter keys superset of metadata
-      assert metadata_matches?([a: 1], b: 1, a: 1) == false
-    end
-
     test "can configure metadata" do
       config(metadata: [:user_id, :auth])
 
@@ -109,7 +94,7 @@ defmodule LoggerEtsBackendTest do
       assert md |> Keyword.fetch!(:user_id) == 13
     end
 
-    test "Allow `:all` to metadata" do
+    test "allows `:all` metadata" do
       config(metadata: [])
       Logger.debug("metadata", metadata1: "foo", metadata2: "bar")
       Logger.flush()
@@ -130,6 +115,72 @@ defmodule LoggerEtsBackendTest do
       assert md[:metadata6] == "bar"
     end
   end
+
+  describe "metadata_matches?" do
+    setup do
+      config(
+        table: @name,
+        level: :debug,
+        metadata: [],
+        metadata_filter: nil
+      )
+
+      on_exit(fn ->
+        :ets.delete_all_objects(@name)
+      end)
+    end
+
+    test "can filter by metadata" do
+      # exact match
+      assert metadata_matches?([a: 1], a: 1) == true
+      # total mismatch
+      assert metadata_matches?([b: 1], a: 1) == false
+      # default to allow
+      assert metadata_matches?([b: 1], nil) == true
+      # metadata is superset of filter
+      assert metadata_matches?([b: 1, a: 1], a: 1) == true
+      # multiple filter keys subset of metadata
+      assert metadata_matches?([c: 1, b: 1, a: 1], b: 1, a: 1) == true
+      # multiple filter keys superset of metadata
+      assert metadata_matches?([a: 1], b: 1, a: 1) == false
+    end
+  end
+
+  describe "enabling `stored_typed`" do
+    setup do
+      config(
+        table: @name,
+        level: :debug,
+        metadata: [],
+        metadata_filter: nil,
+        store_typed: true
+      )
+
+      on_exit(fn ->
+        :ets.delete_all_objects(@name)
+      end)
+    end
+
+    test "can store typed data" do
+      data = [is_typed: true, ordered: false]
+
+      Logger.debug(data)
+      Logger.flush()
+
+      assert {_, :debug, ^data, _} = log()
+    end
+
+    test "can store a string message" do
+      data = "this is a stringy message"
+
+      Logger.debug(data)
+      Logger.flush()
+
+      assert {_, :debug, ^data, _} = log()
+    end
+  end
+
+  ## private methods
 
   defp config(opts) do
     Logger.configure_backend(@backend, opts)

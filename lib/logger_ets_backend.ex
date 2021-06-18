@@ -14,41 +14,38 @@ defmodule LoggerEtsBackend do
     {:ok, :ok, configure(name, opts, state)}
   end
 
-  def handle_event(
-        {level, _gl, {Logger, msg, ts, md}},
-        %{level: min_level, metadata_filter: metadata_filter} = state
-      ) do
-    if (is_nil(min_level) or Logger.compare_levels(level, min_level) != :lt) and
-         metadata_matches?(md, metadata_filter) do
-      log_event(level, msg, ts, md, state)
-    end
+  def handle_event({level, _gl, {Logger, msg, ts, md}}, state) do
+    %{level: min_level, metadata_filter: md_filter} = state
+
+    if min_level_met?(level, min_level) and metadata_matches?(md, md_filter),
+      do: log_event(level, msg, ts, md, state)
 
     {:ok, state}
   end
 
-  def handle_event(:flush, state) do
-    # We're not buffering anything so this is a no-op
-    {:ok, state}
-  end
+  def handle_event(_, state), do: {:ok, state}
+  def handle_info(_, state), do: {:ok, state}
 
-  def handle_info(_, state) do
-    {:ok, state}
-  end
+  defp log_event(level, msg, ts, md, state) do
+    %{table: table, metadata: md_keys} = state
 
-  defp log_event(level, msg, ts, md, %{table: table, metadata: md_keys} = _state) do
-    try do
-      filtered_md = take_metadata(md, md_keys)
-      :ets.insert_new(table, {ts, level, msg, filtered_md})
-    rescue
-      ErlangError ->
-        # table doesn't exist or is not
-        # writable. nothing we can do
-        true
-    end
+    data =
+      case state.store_typed do
+        true -> maybe_parse_msg(msg)
+        _ -> msg
+      end
+
+    filtered_md = take_metadata(md, md_keys)
+
+    :ets.insert_new(table, {ts, level, data, filtered_md})
+  rescue
+    ErlangError ->
+      # table doesn't exist or is not
+      # writable. nothing we can do
+      true
   end
 
   def metadata_matches?(_md, nil), do: true
-  # all of the filter keys are present
   def metadata_matches?(_md, []), do: true
 
   def metadata_matches?(md, [{key, val} | rest]) do
@@ -56,28 +53,38 @@ defmodule LoggerEtsBackend do
       {:ok, ^val} ->
         metadata_matches?(md, rest)
 
-      # fail on first mismatch
       _ ->
         false
     end
   end
 
+  def maybe_parse_msg(msg) do
+    {:ok, data} = Code.string_to_quoted(msg)
+
+    if Keyword.keyword?(data),
+      do: data,
+      else: msg
+  rescue
+    _ -> msg
+  end
+
   defp take_metadata(metadata, :all), do: metadata
 
   defp take_metadata(metadata, keys) do
-    metadatas =
-      Enum.reduce(keys, [], fn key, acc ->
-        case Keyword.fetch(metadata, key) do
-          {:ok, val} ->
-            [{key, val} | acc]
+    Enum.reduce(keys, [], fn key, acc ->
+      case Keyword.fetch(metadata, key) do
+        {:ok, val} ->
+          [{key, val} | acc]
 
-          :error ->
-            acc
-        end
-      end)
-
-    Enum.reverse(metadatas)
+        :error ->
+          acc
+      end
+    end)
+    |> Enum.reverse()
   end
+
+  defp min_level_met?(_level, nil), do: true
+  defp min_level_met?(level, min), do: Logger.compare_levels(level, min) != :lt
 
   defp configure(name, opts) do
     state = %{
@@ -87,7 +94,8 @@ defmodule LoggerEtsBackend do
       inode: nil,
       level: nil,
       metadata: nil,
-      metadata_filter: nil
+      metadata_filter: nil,
+      store_typed: false
     }
 
     configure(name, opts, state)
@@ -96,21 +104,17 @@ defmodule LoggerEtsBackend do
   defp configure(name, opts, state) do
     env = Application.get_env(:logger, name, [])
     opts = Keyword.merge(env, opts)
-    Application.put_env(:logger, name, opts)
 
-    table = Keyword.get(opts, :table)
-    level = Keyword.get(opts, :level)
-    #
-    metadata = Keyword.get(opts, :metadata, [])
-    metadata_filter = Keyword.get(opts, :metadata_filter)
+    Application.put_env(:logger, name, opts)
 
     %{
       state
       | name: name,
-        table: table,
-        level: level,
-        metadata: metadata,
-        metadata_filter: metadata_filter
+        table: Keyword.get(opts, :table),
+        level: Keyword.get(opts, :level),
+        metadata: Keyword.get(opts, :metadata, []),
+        metadata_filter: Keyword.get(opts, :metadata_filter),
+        store_typed: Keyword.get(opts, :store_typed, false)
     }
   end
 end
